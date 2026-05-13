@@ -1,0 +1,4 @@
+kaggle==1.6.17
+azure-identity==1.17.1
+azure-keyvault-secrets==4.8.0
+azure-storage-file-datalake==12.15.0

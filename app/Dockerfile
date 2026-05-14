@@ -1,6 +1,5 @@
-FROM python:3.10-slim
+FROM python:3.10-slim-bullseye
 
-# install ODBC driver for Synapse connection
 RUN apt-get update && apt-get install -y \
     curl gnupg2 unixodbc-dev \
     && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \

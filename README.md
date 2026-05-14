@@ -34,8 +34,8 @@ and serves an interactive portfolio dashboard.
 | 2 | Data ingestion (Kaggle → ADLS bronze) | ✅ Done |
 | 3 | Data prep & feature engineering (bronze → silver) | ✅ Done |
 | 4 | Model training — LR / XGBoost / LightGBM, winner to gold | ✅ Done |
-| 5 | Synapse Serverless SQL views over gold layer | 🔄 In progress |
-| 6 | Plotly Dash dashboard (7 chart types) | ⬜ Pending |
+| 5 | Synapse Serverless SQL views over gold layer | ✅ Done |
+| 6 | Plotly Dash dashboard (7 chart types) | 🔄 In progress |
 | 7 | Containerize dashboard (Docker → ACR) | ⬜ Pending |
 | 8 | CI/CD pipeline (GitHub Actions → Container Apps) | ⬜ Pending |
 | 9 | Monitoring (Azure Monitor + App Insights) | ⬜ Pending |

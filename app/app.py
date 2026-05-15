@@ -2,7 +2,7 @@ import os
 import pyodbc
 import pandas as pd
 import dash
-from dash import dcc, html, Input, Output
+from dash import dcc, html, Input, Output, State
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import plotly.graph_objects as go
@@ -62,12 +62,14 @@ ALL_GRADES = sorted(portfolio["grade"].dropna().unique().tolist())
 print("Data loaded.")
 
 
+# ── chart helpers ─────────────────────────────────────────────────────────────
+
 def kpi_gauge(value, title, color="steelblue"):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=round(value * 100, 1),
-        number={"suffix": "%"},
-        title={"text": title, "font": {"size": 13}},
+        number={"suffix": "%", "font": {"size": 28}},
+        title={"text": title, "font": {"size": 12}},
         gauge={
             "axis": {"range": [0, 50]},
             "bar": {"color": color},
@@ -78,20 +80,24 @@ def kpi_gauge(value, title, color="steelblue"):
             ],
         },
     ))
-    fig.update_layout(height=200, margin=dict(t=40, b=0, l=10, r=10))
+    fig.update_layout(height=150, margin=dict(t=30, b=0, l=10, r=10))
     return fig
 
 
-def fig_loan_volume(df):
+def fig_loan_volume(df, selected=None):
     if df.empty:
         return go.Figure()
     fig = px.bar(
-        df, x="grade", y="total_loans",
+        portfolio[portfolio["grade"].isin(ALL_GRADES)].sort_values("grade_int"),
+        x="grade", y="total_loans",
         color="default_rate", color_continuous_scale="RdYlGn_r",
-        title="Loan Volume by Grade",
+        title="Loan Volume by Grade  <i>(click bar to cross-filter)</i>",
         labels={"total_loans": "Total Loans", "grade": "Grade", "default_rate": "Default Rate"},
     )
-    fig.update_layout(height=320, margin=dict(t=40, b=20, l=10, r=10))
+    if selected and len(selected) < len(ALL_GRADES):
+        opacities = [1.0 if g in selected else 0.25 for g in portfolio["grade"].sort_values().unique()]
+        fig.update_traces(marker_opacity=opacities)
+    fig.update_layout(height=300, margin=dict(t=40, b=20, l=10, r=10))
     return fig
 
 
@@ -101,35 +107,39 @@ def fig_heatmap(df):
     pivot = df.pivot_table(index="grade", columns="term", values="default_rate", aggfunc="mean")
     fig = px.imshow(
         pivot, color_continuous_scale="RdYlGn_r",
-        title="Default Rate: Grade x Term",
+        title="Default Rate: Grade × Term",
         labels={"color": "Default Rate"},
         text_auto=".1%",
     )
-    fig.update_layout(height=320, margin=dict(t=40, b=20, l=10, r=10))
+    fig.update_layout(height=300, margin=dict(t=40, b=20, l=10, r=10))
     return fig
 
 
 def fig_vintage():
     fig = px.line(
         vintage, x="credit_age_months", y="default_rate",
-        title="Vintage Curve - Default Rate by Credit Age",
+        title="Vintage Curve — Default Rate by Credit Age",
         labels={"credit_age_months": "Credit Age (months)", "default_rate": "Default Rate"},
     )
     fig.update_traces(line_color="steelblue", line_width=2)
-    fig.update_layout(height=320, yaxis_tickformat=".1%", margin=dict(t=40, b=20, l=10, r=10))
+    fig.update_layout(height=300, yaxis_tickformat=".1%", margin=dict(t=40, b=20, l=10, r=10))
     return fig
 
 
-def fig_int_rate(df):
+def fig_int_rate(df, selected=None):
     if df.empty:
         return go.Figure()
+    base = portfolio[portfolio["grade"].isin(ALL_GRADES)].sort_values("grade_int")
     fig = px.bar(
-        df, x="grade", y="avg_int_rate",
+        base, x="grade", y="avg_int_rate",
         color="avg_int_rate", color_continuous_scale="Blues",
-        title="Average Interest Rate by Grade",
+        title="Avg Interest Rate by Grade  <i>(click bar to cross-filter)</i>",
         labels={"avg_int_rate": "Avg Interest Rate (%)", "grade": "Grade"},
     )
-    fig.update_layout(height=320, margin=dict(t=40, b=20, l=10, r=10))
+    if selected and len(selected) < len(ALL_GRADES):
+        opacities = [1.0 if g in selected else 0.25 for g in base["grade"]]
+        fig.update_traces(marker_opacity=opacities)
+    fig.update_layout(height=300, margin=dict(t=40, b=20, l=10, r=10))
     return fig
 
 
@@ -141,7 +151,7 @@ def fig_actual_vs_predicted():
     fig.update_layout(
         title="Actual vs Predicted Default Rate",
         yaxis_title="Default Rate (%)",
-        barmode="group", height=320,
+        barmode="group", height=300,
         margin=dict(t=40, b=20, l=10, r=10),
     )
     return fig
@@ -174,7 +184,7 @@ def fig_violin(selected_grades):
         labels={"int_rate": "Interest Rate (%)", "grade": "Grade"},
         category_orders={"grade": ALL_GRADES},
     )
-    fig.update_layout(height=380, showlegend=False, margin=dict(t=40, b=20, l=10, r=10))
+    fig.update_layout(height=320, showlegend=False, margin=dict(t=40, b=20, l=10, r=10))
     return fig
 
 
@@ -200,10 +210,12 @@ def fig_sankey(df):
         node=dict(label=labels, color=node_colors, pad=12, thickness=16),
         link=dict(source=sources, target=targets, value=values),
     ))
-    fig.update_layout(title="Loan Flow: Portfolio -> Grade -> Outcome", height=420,
+    fig.update_layout(title="Loan Flow: Portfolio → Grade → Outcome", height=360,
                       margin=dict(t=40, b=10, l=10, r=10))
     return fig
 
+
+# ── layout ────────────────────────────────────────────────────────────────────
 
 app = dash.Dash(
     __name__,
@@ -214,23 +226,26 @@ app.title = "Retail Credit Portfolio Analytics"
 
 CARD = {"className": "shadow-sm mb-3 h-100"}
 CFG  = {"responsive": True}
+
 grade_opts = [{"label": f" {g}", "value": g} for g in ALL_GRADES]
 
 app.layout = dbc.Container(fluid=True, style={"backgroundColor": "#f5f5f5", "padding": "0"}, children=[
 
+    # ── header ───────────────────────────────────────────────────────────────
     html.Div(
         style={"backgroundColor": "#1a237e", "padding": "16px 24px", "color": "white", "marginBottom": "16px"},
         children=[
             html.H1("Retail Credit Portfolio Analytics",
                     style={"margin": 0, "fontSize": "clamp(16px, 4vw, 26px)"}),
-            html.P("LendingClub 2007-2018 · Azure ML · Synapse Serverless SQL",
+            html.P("LendingClub 2007–2018 · Azure ML · Synapse Serverless SQL",
                    style={"margin": "4px 0 0", "opacity": 0.75, "fontSize": "clamp(11px, 2vw, 13px)"}),
         ],
     ),
 
     dbc.Container(fluid=True, style={"padding": "0 16px"}, children=[
 
-        dbc.Card(**CARD, children=[
+        # ── filters ──────────────────────────────────────────────────────────
+        dbc.Card(CARD, children=[
             dbc.CardBody([
                 dbc.Row(align="center", children=[
                     dbc.Col(html.H6("Filter by Loan Grade", className="mb-0 text-primary"), xs=12, md="auto"),
@@ -253,58 +268,85 @@ app.layout = dbc.Container(fluid=True, style={"backgroundColor": "#f5f5f5", "pad
             ])
         ]),
 
+        # ── KPI gauges ───────────────────────────────────────────────────────
         dbc.Row(className="mb-1", children=[
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(figure=kpi_gauge(perf["actual_default_rate"],     "Actual Default Rate",    "tomato"),     config=CFG))]), xs=12, sm=4),
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(figure=kpi_gauge(perf["predicted_default_rate"],  "Predicted Default Rate", "steelblue"),  config=CFG))]), xs=12, sm=4),
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(figure=kpi_gauge(perf["avg_default_probability"], "Avg Default Probability","darkorange"), config=CFG))]), xs=12, sm=4),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(className="p-2", children=
+                dcc.Graph(figure=kpi_gauge(perf["actual_default_rate"],    "Actual Default Rate",    "tomato"),      config=CFG)
+            )]), xs=12, sm=4),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(className="p-2", children=
+                dcc.Graph(figure=kpi_gauge(perf["predicted_default_rate"], "Predicted Default Rate", "steelblue"),   config=CFG)
+            )]), xs=12, sm=4),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(className="p-2", children=
+                dcc.Graph(figure=kpi_gauge(perf["avg_default_probability"], "Avg Default Probability","darkorange"),  config=CFG)
+            )]), xs=12, sm=4),
         ]),
 
+        # ── row 2: volume + heatmap ───────────────────────────────────────────
         dbc.Row(children=[
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(id="fig-loan-volume", config=CFG))]), xs=12, md=6),
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(id="fig-heatmap",     config=CFG))]), xs=12, md=6),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-loan-volume", config=CFG))]), xs=12, md=6),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-heatmap",     config=CFG))]), xs=12, md=6),
         ]),
 
+        # ── row 3: vintage + interest rate ────────────────────────────────────
         dbc.Row(children=[
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_vintage(),  config=CFG))]), xs=12, md=6),
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(id="fig-int-rate",     config=CFG))]), xs=12, md=6),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_vintage(),           config=CFG))]), xs=12, md=6),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-int-rate",              config=CFG))]), xs=12, md=6),
         ]),
 
+        # ── row 4: actual vs predicted + summary table ────────────────────────
         dbc.Row(children=[
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_actual_vs_predicted(), config=CFG))]), xs=12, md=6),
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody([
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_actual_vs_predicted(), config=CFG))]), xs=12, md=9),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody([
                 html.H5("Dataset Summary", className="text-primary mb-3"),
                 dbc.Table([
                     html.Tbody([
-                        html.Tr([html.Td("Total Loans Scored"),     html.Td(f"{int(perf['total_scored']):,}",             className="fw-bold text-end")]),
-                        html.Tr([html.Td("Actual Defaults"),        html.Td(f"{int(perf['total_actual_defaults']):,}",    className="fw-bold text-end text-danger")]),
-                        html.Tr([html.Td("Predicted Defaults"),     html.Td(f"{int(perf['total_predicted_defaults']):,}", className="fw-bold text-end text-primary")]),
-                        html.Tr([html.Td("Actual Default Rate"),    html.Td(f"{perf['actual_default_rate']:.2%}",         className="fw-bold text-end")]),
-                        html.Tr([html.Td("Predicted Default Rate"), html.Td(f"{perf['predicted_default_rate']:.2%}",      className="fw-bold text-end")]),
+                        html.Tr([html.Td("Total Loans Scored"),    html.Td(f"{int(perf['total_scored']):,}",               className="fw-bold text-end")]),
+                        html.Tr([html.Td("Actual Defaults"),       html.Td(f"{int(perf['total_actual_defaults']):,}",      className="fw-bold text-end text-danger")]),
+                        html.Tr([html.Td("Predicted Defaults"),    html.Td(f"{int(perf['total_predicted_defaults']):,}",   className="fw-bold text-end text-primary")]),
+                        html.Tr([html.Td("Actual Default Rate"),   html.Td(f"{perf['actual_default_rate']:.2%}",           className="fw-bold text-end")]),
+                        html.Tr([html.Td("Predicted Default Rate"),html.Td(f"{perf['predicted_default_rate']:.2%}",        className="fw-bold text-end")]),
                     ])
                 ], borderless=True, size="sm"),
-            ])]), xs=12, md=6),
+            ])]), xs=12, md=3),
         ]),
 
+        # ── row 5: choropleth (full width) ────────────────────────────────────
         dbc.Row(children=[
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_choropleth(), config=CFG))]), xs=12),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_choropleth(), config=CFG))]), xs=12),
         ]),
 
+        # ── row 6: violin + sankey ────────────────────────────────────────────
         dbc.Row(className="mb-4", children=[
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(id="fig-violin", config=CFG))]), xs=12, md=6),
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(id="fig-sankey", config=CFG))]), xs=12, md=6),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-violin", config=CFG))]), xs=12, md=6),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-sankey", config=CFG))]), xs=12, md=6),
         ]),
 
     ]),
 ])
 
 
+# ── callbacks ─────────────────────────────────────────────────────────────────
+
 @app.callback(
     Output("grade-filter", "value"),
-    Input("reset-btn", "n_clicks"),
+    Input("reset-btn",       "n_clicks"),
+    Input("fig-loan-volume", "clickData"),
+    Input("fig-int-rate",    "clickData"),
+    State("grade-filter", "value"),
     prevent_initial_call=True,
 )
-def reset_filters(_):
-    return ALL_GRADES
+def handle_grade_selection(_, vol_click, rate_click, current):
+    trigger = dash.callback_context.triggered[0]["prop_id"].split(".")[0]
+    if trigger == "reset-btn":
+        return ALL_GRADES
+    click_data = vol_click if trigger == "fig-loan-volume" else rate_click
+    if not click_data or not click_data.get("points"):
+        return current or ALL_GRADES
+    clicked_grade = click_data["points"][0]["x"]
+    # toggle: clicking the only selected grade resets to all
+    if current == [clicked_grade]:
+        return ALL_GRADES
+    return [clicked_grade]
 
 
 @app.callback(
@@ -318,9 +360,17 @@ def reset_filters(_):
 def update_charts(selected):
     if not selected:
         selected = ALL_GRADES
+
     p = portfolio[portfolio["grade"].isin(selected)].copy()
     s = segment[segment["grade"].isin(selected)].copy() if "grade" in segment.columns else segment
-    return fig_loan_volume(p), fig_heatmap(s), fig_int_rate(p), fig_violin(selected), fig_sankey(p)
+
+    return (
+        fig_loan_volume(p, selected),
+        fig_heatmap(s),
+        fig_int_rate(p, selected),
+        fig_violin(selected),
+        fig_sankey(p),
+    )
 
 
 if __name__ == "__main__":

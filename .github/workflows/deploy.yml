@@ -37,11 +37,13 @@ jobs:
         with:
           context: ./app
           push: true
-          tags: ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          tags: |
+            ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Deploy to Container Apps
         run: |
           az containerapp update \
             --name ${{ env.CONTAINER_APP }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            --image ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}

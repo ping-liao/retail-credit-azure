@@ -244,7 +244,7 @@ app.layout = dbc.Container(fluid=True, style={"backgroundColor": "#f5f5f5", "pad
     dbc.Container(fluid=True, style={"padding": "0 16px"}, children=[
 
         # ── filters ──────────────────────────────────────────────────────────
-        dbc.Card(CARD, children=[
+        dbc.Card(**CARD, children=[
             dbc.CardBody([
                 dbc.Row(align="center", children=[
                     dbc.Col(html.H6("Filter by Loan Grade", className="mb-0 text-primary"), xs=12, md="auto"),
@@ -269,29 +269,29 @@ app.layout = dbc.Container(fluid=True, style={"backgroundColor": "#f5f5f5", "pad
 
         # ── KPI gauges ───────────────────────────────────────────────────────
         dbc.Row(className="mb-1", children=[
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(className="p-2", children=
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(className="p-2", children=
                 dcc.Graph(figure=kpi_gauge(perf["actual_default_rate"],    "Actual Default Rate",    "tomato"),      config=CFG)
             )]), xs=12, sm=4),
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(className="p-2", children=
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(className="p-2", children=
                 dcc.Graph(figure=kpi_gauge(perf["predicted_default_rate"], "Predicted Default Rate", "steelblue"),   config=CFG)
             )]), xs=12, sm=4),
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(className="p-2", children=
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(className="p-2", children=
                 dcc.Graph(figure=kpi_gauge(perf["avg_default_probability"], "Avg Default Probability","darkorange"),  config=CFG)
             )]), xs=12, sm=4),
         ]),
 
         # ── row 2: volume + heatmap + vintage ────────────────────────────────
         dbc.Row(children=[
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-loan-volume", config=CFG))]), xs=12, md=4),
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-heatmap",     config=CFG))]), xs=12, md=4),
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_vintage(),  config=CFG))]), xs=12, md=4),
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(id="fig-loan-volume", config=CFG))]), xs=12, md=4),
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(id="fig-heatmap",     config=CFG))]), xs=12, md=4),
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_vintage(),  config=CFG))]), xs=12, md=4),
         ]),
 
         # ── row 3: interest rate + actual vs predicted + summary ──────────────
         dbc.Row(children=[
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-int-rate", config=CFG))]), xs=12, md=4),
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_actual_vs_predicted(), config=CFG))]), xs=12, md=4),
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody([
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(id="fig-int-rate", config=CFG))]), xs=12, md=4),
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_actual_vs_predicted(), config=CFG))]), xs=12, md=4),
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody([
                 html.H5("Dataset Summary", className="text-primary mb-3"),
                 dbc.Table([
                     html.Tbody([
@@ -307,13 +307,13 @@ app.layout = dbc.Container(fluid=True, style={"backgroundColor": "#f5f5f5", "pad
 
         # ── row 4: choropleth (full width) ────────────────────────────────────
         dbc.Row(children=[
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_choropleth(), config=CFG))]), xs=12),
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_choropleth(), config=CFG))]), xs=12),
         ]),
 
         # ── row 5: violin + sankey ────────────────────────────────────────────
         dbc.Row(className="mb-4", children=[
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-violin", config=CFG))]), xs=12, md=6),
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-sankey", config=CFG))]), xs=12, md=6),
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(id="fig-violin", config=CFG))]), xs=12, md=6),
+            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(id="fig-sankey", config=CFG))]), xs=12, md=6),
         ]),
 
     ]),

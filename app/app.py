@@ -80,7 +80,7 @@ def kpi_gauge(value, title, color="steelblue"):
             ],
         },
     ))
-    fig.update_layout(height=150, margin=dict(t=30, b=0, l=10, r=10))
+    fig.update_layout(height=190, margin=dict(t=40, b=0, l=10, r=10))
     return fig
 
 
@@ -157,19 +157,38 @@ def fig_actual_vs_predicted():
     return fig
 
 
-def fig_choropleth():
+def fig_choropleth(selected_state=None):
     if states.empty:
         return go.Figure().update_layout(title="Loan Volume by State (no data)")
+    if selected_state:
+        row = states[states["addr_state"] == selected_state]
+        if not row.empty:
+            r = row.iloc[0]
+            title = (f"<b>{selected_state}</b> — {int(r['total_loans']):,} loans · "
+                     f"${int(r['total_loan_amnt']):,} total · "
+                     f"${int(r['avg_annual_inc']):,.0f} avg income "
+                     f" <i>(click again to reset)</i>")
+        else:
+            title = "Loan Volume by State"
+    else:
+        title = "Loan Volume by State  <i>(click a state to highlight)</i>"
     fig = px.choropleth(
         states, locations="addr_state", locationmode="USA-states",
         color="total_loans", scope="usa",
         color_continuous_scale="Blues",
-        title="Loan Volume by State",
+        title=title,
         labels={"total_loans": "Total Loans", "addr_state": "State",
                 "total_loan_amnt": "Total Loan Amount", "avg_annual_inc": "Avg Annual Income"},
         hover_data={"total_loan_amnt": ":,.0f", "avg_annual_inc": ":,.0f"},
     )
-    fig.update_layout(height=380, margin=dict(t=40, b=10, l=10, r=10))
+    if selected_state:
+        fig.add_trace(go.Choropleth(
+            locations=[selected_state], z=[1],
+            locationmode="USA-states",
+            colorscale=[[0, "rgba(220,50,0,0.55)"], [1, "rgba(220,50,0,0.55)"]],
+            showscale=False, hoverinfo="skip",
+        ))
+    fig.update_layout(height=380, margin=dict(t=50, b=10, l=10, r=10))
     return fig
 
 
@@ -307,7 +326,8 @@ app.layout = dbc.Container(fluid=True, style={"backgroundColor": "#f5f5f5", "pad
 
         # ── row 4: choropleth (full width) ────────────────────────────────────
         dbc.Row(children=[
-            dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_choropleth(), config=CFG))]), xs=12),
+            dcc.Store(id="selected-state", data=None),
+        dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(dcc.Graph(id="fig-choropleth", figure=fig_choropleth(), config=CFG))]), xs=12),
         ]),
 
         # ── row 5: violin + sankey ────────────────────────────────────────────
@@ -365,6 +385,27 @@ def update_charts(selected):
         fig_violin(selected),
         fig_sankey(p),
     )
+
+
+@app.callback(
+    Output("selected-state", "data"),
+    Input("fig-choropleth", "clickData"),
+    State("selected-state", "data"),
+    prevent_initial_call=True,
+)
+def handle_state_click(click_data, current):
+    if not click_data:
+        return None
+    clicked = click_data["points"][0]["location"]
+    return None if current == clicked else clicked
+
+
+@app.callback(
+    Output("fig-choropleth", "figure"),
+    Input("selected-state", "data"),
+)
+def update_choropleth(selected_state):
+    return fig_choropleth(selected_state)
 
 
 if __name__ == "__main__":

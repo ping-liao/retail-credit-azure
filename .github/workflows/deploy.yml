@@ -1,6 +1,7 @@
 name: Build and Deploy Dashboard
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths: ["app/**"]
@@ -13,7 +14,8 @@ env:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on:
+  workflow_dispatch: ubuntu-latest
 
     steps:
       - name: Checkout code

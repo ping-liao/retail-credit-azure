@@ -107,7 +107,7 @@ def fig_heatmap(df):
     pivot = df.pivot_table(index="grade", columns="term", values="default_rate", aggfunc="mean")
     fig = px.imshow(
         pivot, color_continuous_scale="RdYlGn_r",
-        title="Default Rate: Grade × Term",
+        title="Default Rate: Grade × Term  <i>(click row to filter grade)</i>",
         labels={"color": "Default Rate"},
         text_auto=".1%",
     )
@@ -198,7 +198,7 @@ def fig_violin(selected_grades):
     df = int_rates[int_rates["grade"].isin(selected_grades)] if selected_grades else int_rates
     fig = px.violin(
         df, x="grade", y="int_rate", box=True, points=False,
-        color="grade", title="Interest Rate Distribution by Grade",
+        color="grade", title="Interest Rate Distribution by Grade  <i>(click to filter)</i>",
         labels={"int_rate": "Interest Rate (%)", "grade": "Grade"},
         category_orders={"grade": ALL_GRADES},
     )

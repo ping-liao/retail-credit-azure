@@ -9,13 +9,18 @@ import plotly.graph_objects as go
 import plotly.io as pio
 
 # ── design tokens ─────────────────────────────────────────────────────────────
-GRADE_COLORS = {
-    "A": "#4CAF50", "B": "#8BC34A", "C": "#FFEB3B",
-    "D": "#FF9800", "E": "#F44336", "F": "#C62828", "G": "#880E4F",
+GRADE_COLORS = {            # blue (safe) → yellow (caution) → red (risk)
+    "A": "#313695",         # dark blue
+    "B": "#4575b4",         # blue
+    "C": "#74add1",         # light blue
+    "D": "#fee090",         # yellow
+    "E": "#f46d43",         # orange
+    "F": "#d73027",         # red-orange
+    "G": "#a50026",         # dark red
 }
 COL_DEFAULT   = "#e53935"   # actual default / high-risk
 COL_PREDICTED = "#1565c0"   # model prediction
-COL_GOOD      = "#43a047"   # performing / low-risk
+COL_GOOD      = "#4575b4"   # performing / low-risk (blue, not green)
 COL_NEUTRAL   = "#ef6c00"   # average probability
 
 # Global chart theme — applies to every figure automatically
@@ -140,7 +145,7 @@ def fig_loan_volume(df, selected=None):
     fig = px.bar(
         portfolio[portfolio["grade"].isin(ALL_GRADES)].sort_values("grade_int"),
         x="grade", y="total_loans",
-        color="default_rate", color_continuous_scale="RdYlGn_r",
+        color="default_rate", color_continuous_scale="RdYlBu_r",
         title="Loan Volume by Grade  <i>(click bar to cross-filter)</i>",
         labels={"total_loans": "Total Loans", "grade": "Grade", "default_rate": "Default Rate"},
     )
@@ -156,7 +161,7 @@ def fig_heatmap(df):
         return go.Figure()
     pivot = df.pivot_table(index="grade", columns="term", values="default_rate", aggfunc="mean")
     fig = px.imshow(
-        pivot, color_continuous_scale="RdYlGn_r",
+        pivot, color_continuous_scale="RdYlBu_r",
         title="Default Rate: Grade × Term  <i>(click row to filter grade)</i>",
         labels={"color": "Default Rate"},
         text_auto=".1%",

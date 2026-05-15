@@ -160,15 +160,14 @@ def fig_actual_vs_predicted():
 def fig_choropleth():
     if states.empty:
         return go.Figure().update_layout(title="Loan Volume by State (no data)")
-    state_col = next((c for c in ["addr_state", "state", "State"] if c in states.columns), None)
-    if not state_col or "total_loans" not in states.columns:
-        return go.Figure().update_layout(title="Loan Volume by State (columns missing)")
     fig = px.choropleth(
-        states, locations=state_col, locationmode="USA-states",
+        states, locations="addr_state", locationmode="USA-states",
         color="total_loans", scope="usa",
         color_continuous_scale="Blues",
         title="Loan Volume by State",
-        labels={"total_loans": "Total Loans"},
+        labels={"total_loans": "Total Loans", "addr_state": "State",
+                "total_loan_amnt": "Total Loan Amount", "avg_annual_inc": "Avg Annual Income"},
+        hover_data={"total_loan_amnt": ":,.0f", "avg_annual_inc": ":,.0f"},
     )
     fig.update_layout(height=380, margin=dict(t=40, b=10, l=10, r=10))
     return fig

@@ -56,6 +56,13 @@ def load_data():
         "performance": "SELECT * FROM dbo.vw_model_performance",
         "states":      "SELECT * FROM dbo.vw_loans_by_state",
         "int_rates":   "SELECT grade_int, int_rate FROM dbo.scored_predictions WHERE int_rate IS NOT NULL",
+        "grade_perf": (
+            "SELECT grade_int, COUNT(*) AS total_loans, "
+            "AVG(CAST(actual_default AS FLOAT)) AS actual_default_rate, "
+            "AVG(CAST(predicted_default AS FLOAT)) AS predicted_default_rate, "
+            "AVG(default_probability) AS avg_default_probability "
+            "FROM dbo.scored_predictions GROUP BY grade_int"
+        ),
     }
     data = {}
     for key, sql in queries.items():
@@ -83,8 +90,26 @@ vintage    = data["vintage"].sort_values("credit_age_months")
 perf       = data["performance"].iloc[0]
 states     = data["states"]
 int_rates  = data["int_rates"]
+grade_perf = data["grade_perf"]
+if "grade_int" in grade_perf.columns:
+    grade_perf["grade"] = grade_perf["grade_int"].map(GRADE_MAP)
 ALL_GRADES = sorted(portfolio["grade"].dropna().unique().tolist())
 print("Data loaded.")
+
+
+# ── KPI helper ───────────────────────────────────────────────────────────────
+
+def filtered_kpis(selected):
+    df = grade_perf[grade_perf["grade"].isin(selected)] if selected else grade_perf
+    if df.empty or df["total_loans"].sum() == 0:
+        return perf["actual_default_rate"], perf["predicted_default_rate"], perf["avg_default_probability"]
+    w = df["total_loans"]
+    total = w.sum()
+    return (
+        (df["actual_default_rate"]    * w).sum() / total,
+        (df["predicted_default_rate"] * w).sum() / total,
+        (df["avg_default_probability"] * w).sum() / total,
+    )
 
 
 # ── chart helpers ─────────────────────────────────────────────────────────────
@@ -315,13 +340,13 @@ app.layout = dbc.Container(fluid=True, style={"backgroundColor": "#f5f5f5", "pad
         # ── KPI gauges ───────────────────────────────────────────────────────
         dbc.Row(className="mb-1", children=[
             dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(className="p-2", children=
-                dcc.Graph(figure=kpi_gauge(perf["actual_default_rate"],    "Actual Default Rate",    COL_DEFAULT),      config=CFG)
+                dcc.Graph(id="gauge-actual",    figure=kpi_gauge(perf["actual_default_rate"],    "Actual Default Rate",    COL_DEFAULT),    config=CFG)
             )]), xs=12, sm=4),
             dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(className="p-2", children=
-                dcc.Graph(figure=kpi_gauge(perf["predicted_default_rate"], "Predicted Default Rate", COL_PREDICTED),   config=CFG)
+                dcc.Graph(id="gauge-predicted", figure=kpi_gauge(perf["predicted_default_rate"], "Predicted Default Rate", COL_PREDICTED), config=CFG)
             )]), xs=12, sm=4),
             dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(className="p-2", children=
-                dcc.Graph(figure=kpi_gauge(perf["avg_default_probability"], "Avg Default Probability", COL_NEUTRAL),  config=CFG)
+                dcc.Graph(id="gauge-prob",      figure=kpi_gauge(perf["avg_default_probability"], "Avg Default Probability", COL_NEUTRAL),  config=CFG)
             )]), xs=12, sm=4),
         ]),
 
@@ -390,11 +415,14 @@ def handle_grade_selection(_, vol_click, rate_click, current):
 
 
 @app.callback(
-    Output("fig-loan-volume", "figure"),
-    Output("fig-heatmap",     "figure"),
-    Output("fig-int-rate",    "figure"),
-    Output("fig-violin",      "figure"),
-    Output("fig-sankey",      "figure"),
+    Output("fig-loan-volume",  "figure"),
+    Output("fig-heatmap",      "figure"),
+    Output("fig-int-rate",     "figure"),
+    Output("fig-violin",       "figure"),
+    Output("fig-sankey",       "figure"),
+    Output("gauge-actual",     "figure"),
+    Output("gauge-predicted",  "figure"),
+    Output("gauge-prob",       "figure"),
     Input("grade-filter", "value"),
 )
 def update_charts(selected):
@@ -403,6 +431,7 @@ def update_charts(selected):
 
     p = portfolio[portfolio["grade"].isin(selected)].copy()
     s = segment[segment["grade"].isin(selected)].copy() if "grade" in segment.columns else segment
+    actual_r, pred_r, avg_p = filtered_kpis(selected)
 
     return (
         fig_loan_volume(p, selected),
@@ -410,6 +439,9 @@ def update_charts(selected):
         fig_int_rate(p, selected),
         fig_violin(selected),
         fig_sankey(p),
+        kpi_gauge(actual_r, "Actual Default Rate",    COL_DEFAULT),
+        kpi_gauge(pred_r,   "Predicted Default Rate", COL_PREDICTED),
+        kpi_gauge(avg_p,    "Avg Default Probability", COL_NEUTRAL),
     )
 
 

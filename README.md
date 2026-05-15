@@ -4,26 +4,22 @@ A fully Azure-native retail credit risk dashboard built in Python.
 Ingests LendingClub loan data, engineers features, trains a default-risk model,
 and serves an interactive portfolio dashboard.
 
-![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)
-**[Live Dashboard →](https://ca-retail-credit-dashboard.redsmoke-c363ecb0.centralus.azurecontainerapps.io/)**
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Azure%20Container%20Apps-0078D4?style=for-the-badge&logo=microsoftazure)](https://ca-retail-credit-dashboard.redsmoke-c363ecb0.centralus.azurecontainerapps.io/)
 
 ---
 
 ## Architecture
 
-    Kaggle Dataset → Azure Data Factory → ADLS Gen2 (bronze)
-                                               ↓
-                                        AML Notebooks (prep)
-                                               ↓
-                                        ADLS Gen2 (silver)
-                                               ↓
-                                        AML (train: LR / XGBoost / LightGBM)
-                                               ↓
-                                        ADLS Gen2 (gold) → Synapse Serverless SQL
-                                                                   ↓
-                                                        Streamlit Dashboard
-                                                                   ↓
-                                                  Azure Container Apps (live)
+```mermaid
+flowchart LR
+    A[Kaggle Dataset] --> B[Azure Data Factory]
+    B --> C[ADLS Gen2\nbronze/]
+    C --> D[Azure ML\nprep + train]
+    D --> E[ADLS Gen2\ngold/]
+    E --> F[Synapse\nServerless SQL]
+    F --> G[Streamlit Dashboard\nContainer Apps]
+    H[GitHub Actions] -->|CI/CD| G
+```
 
 ---
 
@@ -36,11 +32,11 @@ and serves an interactive portfolio dashboard.
 | 3 | Data prep & feature engineering (bronze → silver) | ✅ Done |
 | 4 | Model training — LR / XGBoost / LightGBM, winner to gold | ✅ Done |
 | 5 | Synapse Serverless SQL views over gold layer | ✅ Done |
-| 6 | Plotly Dash dashboard (7 chart types) | ✅ Done |
+| 6 | Streamlit dashboard (7 chart types) | ✅ Done |
 | 7 | Containerize dashboard (Docker → ACR) | ✅ Done |
-| 8 | CI/CD pipeline (GitHub Actions → Container Apps) | 🔄 In progress  |
-| 9 | Monitoring (Azure Monitor + App Insights) | ⬜ Pending |
-| 10 | GitHub showcase polish (README, architecture diagram) | ⬜ Pending |
+| 8 | CI/CD pipeline (GitHub Actions → Container Apps) | ✅ Done |
+| 9 | Monitoring (Azure Monitor + App Insights) | ✅ Done |
+| 10 | GitHub showcase polish | ✅ Done |
 
 ---
 
@@ -53,11 +49,12 @@ and serves an interactive portfolio dashboard.
 | Preparation | Python, pandas, pyarrow |
 | Modelling | scikit-learn, XGBoost, LightGBM, MLflow |
 | Serving | Azure Synapse Analytics (Serverless SQL) |
-| Dashboard | Plotly Dash, Python |
+| Dashboard | Streamlit, Plotly, Python |
 | Hosting | Azure Container Apps |
 | CI/CD | GitHub Actions |
 | Secrets | Azure Key Vault |
 | Auth | Azure Managed Identity |
+| Monitoring | Azure Application Insights |
 
 ---
 
@@ -78,3 +75,4 @@ and serves an interactive portfolio dashboard.
 | Synapse | `synw-retail-credit-rc01` |
 | Key Vault | `kv-retail-credit-rc01` |
 | Container Registry | `acrretailcreditrc01` |
+| App Insights | `appi-retail-credit-rc01` |

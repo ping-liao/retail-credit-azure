@@ -6,6 +6,31 @@ from dash import dcc, html, Input, Output, State
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
+
+# ── design tokens ─────────────────────────────────────────────────────────────
+GRADE_COLORS = {
+    "A": "#4CAF50", "B": "#8BC34A", "C": "#FFEB3B",
+    "D": "#FF9800", "E": "#F44336", "F": "#C62828", "G": "#880E4F",
+}
+COL_DEFAULT   = "#e53935"   # actual default / high-risk
+COL_PREDICTED = "#1565c0"   # model prediction
+COL_GOOD      = "#43a047"   # performing / low-risk
+COL_NEUTRAL   = "#ef6c00"   # average probability
+
+# Global chart theme — applies to every figure automatically
+_t = go.layout.Template()
+_t.layout.update(
+    font=dict(family="Arial, sans-serif", size=11, color="#444"),
+    title_font=dict(family="Arial, sans-serif", size=13, color="#222"),
+    legend=dict(font=dict(size=11), bgcolor="rgba(0,0,0,0)"),
+    paper_bgcolor="white",
+    xaxis=dict(title_font=dict(size=11), tickfont=dict(size=11)),
+    yaxis=dict(title_font=dict(size=11), tickfont=dict(size=11)),
+    coloraxis=dict(colorbar=dict(title_font=dict(size=11), tickfont=dict(size=11))),
+)
+pio.templates["rc"] = _t
+pio.templates.default = "plotly+rc"
 
 SYNAPSE_SERVER = "synw-retail-credit-rc01-ondemand.sql.azuresynapse.net"
 SYNAPSE_DB     = "retail_credit"
@@ -68,8 +93,8 @@ def kpi_gauge(value, title, color="steelblue"):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=round(value * 100, 1),
-        number={"suffix": "%", "font": {"size": 28}},
-        title={"text": title, "font": {"size": 12}},
+        number={"suffix": "%", "font": {"size": 28, "family": "Arial, sans-serif"}},
+        title={"text": title, "font": {"size": 13, "family": "Arial, sans-serif", "color": "#222"}},
         gauge={
             "axis": {"range": [0, 50]},
             "bar": {"color": color},
@@ -121,7 +146,7 @@ def fig_vintage():
         title="Vintage Curve — Default Rate by Credit Age",
         labels={"credit_age_months": "Credit Age (months)", "default_rate": "Default Rate"},
     )
-    fig.update_traces(line_color="steelblue", line_width=2)
+    fig.update_traces(line_color=COL_PREDICTED, line_width=2)
     fig.update_layout(height=300, yaxis_tickformat=".1%", margin=dict(t=40, b=20, l=10, r=10))
     return fig
 
@@ -132,7 +157,7 @@ def fig_int_rate(df, selected=None):
     base = portfolio[portfolio["grade"].isin(ALL_GRADES)].sort_values("grade_int")
     fig = px.bar(
         base, x="grade", y="avg_int_rate",
-        color="avg_int_rate", color_continuous_scale="Blues",
+        color="avg_int_rate", color_continuous_scale="YlOrRd",
         title="Avg Interest Rate by Grade  <i>(click bar to cross-filter)</i>",
         labels={"avg_int_rate": "Avg Interest Rate (%)", "grade": "Grade"},
     )
@@ -145,8 +170,8 @@ def fig_int_rate(df, selected=None):
 
 def fig_actual_vs_predicted():
     fig = go.Figure([
-        go.Bar(name="Actual",    x=["Portfolio"], y=[perf["actual_default_rate"] * 100],    marker_color="tomato"),
-        go.Bar(name="Predicted", x=["Portfolio"], y=[perf["predicted_default_rate"] * 100], marker_color="steelblue"),
+        go.Bar(name="Actual",    x=["Portfolio"], y=[perf["actual_default_rate"] * 100],    marker_color=COL_DEFAULT),
+        go.Bar(name="Predicted", x=["Portfolio"], y=[perf["predicted_default_rate"] * 100], marker_color=COL_PREDICTED),
     ])
     fig.update_layout(
         title="Actual vs Predicted Default Rate",
@@ -198,7 +223,8 @@ def fig_violin(selected_grades):
     df = int_rates[int_rates["grade"].isin(selected_grades)] if selected_grades else int_rates
     fig = px.violin(
         df, x="grade", y="int_rate", box=True, points=False,
-        color="grade", title="Interest Rate Distribution by Grade  <i>(click to filter)</i>",
+        color="grade", color_discrete_map=GRADE_COLORS,
+        title="Interest Rate Distribution by Grade  <i>(click to filter)</i>",
         labels={"int_rate": "Interest Rate (%)", "grade": "Grade"},
         category_orders={"grade": ALL_GRADES},
     )
@@ -214,8 +240,8 @@ def fig_sankey(df):
     labels = ["All Loans"] + grades + ["Default", "Performing"]
     node_colors = (
         ["#1a237e"]
-        + ["#4CAF50","#8BC34A","#FFEB3B","#FF9800","#F44336","#C62828","#880E4F"][:n]
-        + ["tomato", "steelblue"]
+        + [GRADE_COLORS.get(g, "#aaa") for g in grades]
+        + [COL_DEFAULT, COL_GOOD]
     )
     sources, targets, values = [], [], []
     for i, (_, row) in enumerate(df.iterrows()):
@@ -289,13 +315,13 @@ app.layout = dbc.Container(fluid=True, style={"backgroundColor": "#f5f5f5", "pad
         # ── KPI gauges ───────────────────────────────────────────────────────
         dbc.Row(className="mb-1", children=[
             dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(className="p-2", children=
-                dcc.Graph(figure=kpi_gauge(perf["actual_default_rate"],    "Actual Default Rate",    "tomato"),      config=CFG)
+                dcc.Graph(figure=kpi_gauge(perf["actual_default_rate"],    "Actual Default Rate",    COL_DEFAULT),      config=CFG)
             )]), xs=12, sm=4),
             dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(className="p-2", children=
-                dcc.Graph(figure=kpi_gauge(perf["predicted_default_rate"], "Predicted Default Rate", "steelblue"),   config=CFG)
+                dcc.Graph(figure=kpi_gauge(perf["predicted_default_rate"], "Predicted Default Rate", COL_PREDICTED),   config=CFG)
             )]), xs=12, sm=4),
             dbc.Col(dbc.Card(**CARD, children=[dbc.CardBody(className="p-2", children=
-                dcc.Graph(figure=kpi_gauge(perf["avg_default_probability"], "Avg Default Probability","darkorange"),  config=CFG)
+                dcc.Graph(figure=kpi_gauge(perf["avg_default_probability"], "Avg Default Probability", COL_NEUTRAL),  config=CFG)
             )]), xs=12, sm=4),
         ]),
 

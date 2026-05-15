@@ -280,21 +280,17 @@ app.layout = dbc.Container(fluid=True, style={"backgroundColor": "#f5f5f5", "pad
             )]), xs=12, sm=4),
         ]),
 
-        # ── row 2: volume + heatmap ───────────────────────────────────────────
+        # ── row 2: volume + heatmap + vintage ────────────────────────────────
         dbc.Row(children=[
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-loan-volume", config=CFG))]), xs=12, md=6),
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-heatmap",     config=CFG))]), xs=12, md=6),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-loan-volume", config=CFG))]), xs=12, md=4),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-heatmap",     config=CFG))]), xs=12, md=4),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_vintage(),  config=CFG))]), xs=12, md=4),
         ]),
 
-        # ── row 3: vintage + interest rate ────────────────────────────────────
+        # ── row 3: interest rate + actual vs predicted + summary ──────────────
         dbc.Row(children=[
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_vintage(),           config=CFG))]), xs=12, md=6),
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-int-rate",              config=CFG))]), xs=12, md=6),
-        ]),
-
-        # ── row 4: actual vs predicted + summary table ────────────────────────
-        dbc.Row(children=[
-            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_actual_vs_predicted(), config=CFG))]), xs=12, md=9),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-int-rate", config=CFG))]), xs=12, md=4),
+            dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_actual_vs_predicted(), config=CFG))]), xs=12, md=4),
             dbc.Col(dbc.Card(CARD, children=[dbc.CardBody([
                 html.H5("Dataset Summary", className="text-primary mb-3"),
                 dbc.Table([
@@ -306,15 +302,15 @@ app.layout = dbc.Container(fluid=True, style={"backgroundColor": "#f5f5f5", "pad
                         html.Tr([html.Td("Predicted Default Rate"),html.Td(f"{perf['predicted_default_rate']:.2%}",        className="fw-bold text-end")]),
                     ])
                 ], borderless=True, size="sm"),
-            ])]), xs=12, md=3),
+            ])]), xs=12, md=4),
         ]),
 
-        # ── row 5: choropleth (full width) ────────────────────────────────────
+        # ── row 4: choropleth (full width) ────────────────────────────────────
         dbc.Row(children=[
             dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(figure=fig_choropleth(), config=CFG))]), xs=12),
         ]),
 
-        # ── row 6: violin + sankey ────────────────────────────────────────────
+        # ── row 5: violin + sankey ────────────────────────────────────────────
         dbc.Row(className="mb-4", children=[
             dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-violin", config=CFG))]), xs=12, md=6),
             dbc.Col(dbc.Card(CARD, children=[dbc.CardBody(dcc.Graph(id="fig-sankey", config=CFG))]), xs=12, md=6),
@@ -342,7 +338,6 @@ def handle_grade_selection(_, vol_click, rate_click, current):
     if not click_data or not click_data.get("points"):
         return current or ALL_GRADES
     clicked_grade = click_data["points"][0]["x"]
-    # toggle: clicking the only selected grade resets to all
     if current == [clicked_grade]:
         return ALL_GRADES
     return [clicked_grade]
